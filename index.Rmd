@@ -14,6 +14,7 @@ html_document:
     fig_height: 4
     code_folding: hide
 ---
+***
 
 # Abstract
 Data on the expression of cell surface markers CD334 and CD54 by adipose tissue-derived mesenchymal stem cells (AT-MSCs) was combined with information on the stem cell donors.
@@ -33,7 +34,7 @@ Based on a quick literature search, I hypothesize that expression of CD34 is hig
 It has been suggested that selecting for the CD54 negative fraction enhances the differentiation potential of the AT-MSCs (Zhao et al. 2013). I do not have access to data on differentiation, but it is known that the differentiation potential decreases with donor age (Choudhery et al. 2014). Maybe the CD54 fraction increases with age, thereby decreasing the differentiation potential.
 
 # Exploring the data
-The data on AT-MSCs was read in [this file](read_at-msc.R). The data was loaded from a .csv file. Body mass index (BMI) was added as an extra variable, defined as weight / height^2. In our lab, the donors have a code, which were used as the row names of the final data file.
+The data on AT-MSCs was read in [this file](https://github.com/gebrawh/at-msc/blob/master/read_at-msc.R). The data was loaded from a .csv file. Body mass index (BMI) was added as an extra variable, defined as weight / height^2. In our lab, the donors have a code, which were used as the row names of the final data file.
 
 Let's have a look at how the data is structured:
 
@@ -51,6 +52,7 @@ library(ggplot2)
 ggpairs(at_msc.data, mapping = aes(alpha = 0.3), lower = list(combo = wrap("facethist", bins = 20)))
 
 ```
+
 Our group started isolating AT-MSCs a bit more than a year ago. So far, we have only characterized cells from 9 donors. As mentioned before, the passage is the number of times the cells have been from one culture vessel to another. This number is indicative of cell culture time. Variables CD34 and CD54 denote the percentage of cells expressing those cell surface markers. CD34 expression ranges from 13% to as high as 54%. CD54 is expressed betweeen 41.3% and 80.8%. Donors were between 32 and 60 years of age. Height of the donors is between 1.51 and 1.79 m and weight between 74 and 85 kg.  Medication is a factor variable wether the donors were using medication at the time of the surgey. 3 out of 9 donors used a hormonal treatment (2 on estrogen and 1 on thyroxin). Adipose tissues were either taken from the thighs, from the middle of the belly or the abdominal flanks.
  
 ```{r warning=FALSE}

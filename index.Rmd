@@ -1,0 +1,292 @@
+---
+title: "IODS course Final assignment: donor-related changes in adipose tissue-derived mesenchymal stem cell surface markers"
+author: "Arjen Gebraad"
+date: "March 8, 2017"
+email: "arjen.gebraad@helsinki.fi"
+output: 
+html_document:
+    theme: cosmo
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    fig_caption: true
+    fig_width: 6
+    fig_height: 4
+    code_folding: hide
+---
+
+# Abstract
+Data on the expression of cell surface markers CD334 and CD54 by adipose tissue-derived mesenchymal stem cells (AT-MSCs) was combined with information on the stem cell donors.
+We found that CD34 expression in AT-MSCs decreases with age of the donor. Moreover, expression of CD54 was lower in AT-MSCs from donors with high body mass index (BMI). The population of stem cell donors could be divided by K-means clustering into a cluster with younger, less overweight donors with higher expression of CD34 and CD54 by AT-MSCs and an older, more overweight cluster with lower epxression of CD34 and CD54 by AT-MSCs. A bigger dataset could reveal more about age and health-related effects on surface marker expression by AT-MSCs.
+
+# Introduction
+
+I am working in a stem cell lab. In our group we mainly work with adipose (fat) tissue- derived mesenchymal stem cells (AT-MSCs). We get liposuction left-overs from female donors undergoing plastic surgery at Laser Tilkka Ltd. The stem cells are isolated by mechanical and enzymatic methods. We use the stem cells in experiments where we stimulate them to differentiate and form, for example osteoblasts (bone cells) or chondrocytes (cartilage cells).
+
+To verify that the isolated cells are mesenchymal stem cells, we check the expression of cell surface markers by flow cytometry. Cell surface markers CD14, CD19, CD45 and HLA-DR are not expressed by AT-MSCs.  CD73, CD90, CD105 on the other hand, are highly expressed by MSCs. The expression of CD34 and CD54 by AT-MSCs varies from donor to donor.
+
+We have some basic personal data on the donors, such as age, weight, height and the location from which the tissue sample was taken. In addition, we keep track of the cell passage: this is the number of times the cells have been transferred from one culture vessel to another and is indicative of cell culture time. I was curious if these parameters would influence the expression of CD34 and CD54.
+
+# Hypothesis
+
+Based on a quick literature search, I hypothesize that expression of CD34 is high when the cells are characterized shortly after isolation. The cells lose CD34 after prolonged cell culture (Lin et al. 2012).
+It has been suggested that selecting for the CD54 negative fraction enhances the differentiation potential of the AT-MSCs (Zhao et al. 2013). I do not have access to data on differentiation, but it is known that the differentiation potential decreases with donor age (Choudhery et al. 2014). Maybe the CD54 fraction increases with age, thereby decreasing the differentiation potential.
+
+# Exploring the data
+The data on AT-MSCs was read in [this file](read_at-msc.R). The data was loaded from a .csv file. Body mass index (BMI) was added as an extra variable, defined as weight / height^2. In our lab, the donors have a code, which were used as the row names of the final data file.
+
+Let's have a look at how the data is structured:
+
+```{r warning=FALSE}
+# load the data
+at_msc.data <- read.csv("at_msc_data.csv", sep = "", header = TRUE)
+
+str(at_msc.data)
+
+summary(at_msc.data)
+
+library(GGally)
+library(ggplot2)
+
+ggpairs(at_msc.data, mapping = aes(alpha = 0.3), lower = list(combo = wrap("facethist", bins = 20)))
+
+```
+Our group started isolating AT-MSCs a bit more than a year ago. So far, we have only characterized cells from 9 donors. As mentioned before, the passage is the number of times the cells have been from one culture vessel to another. This number is indicative of cell culture time. Variables CD34 and CD54 denote the percentage of cells expressing those cell surface markers. CD34 expression ranges from 13% to as high as 54%. CD54 is expressed betweeen 41.3% and 80.8%. Donors were between 32 and 60 years of age. Height of the donors is between 1.51 and 1.79 m and weight between 74 and 85 kg.  Medication is a factor variable wether the donors were using medication at the time of the surgey. 3 out of 9 donors used a hormonal treatment (2 on estrogen and 1 on thyroxin). Adipose tissues were either taken from the thighs, from the middle of the belly or the abdominal flanks.
+ 
+```{r warning=FALSE}
+library(dplyr)
+at_msc.numeric <- dplyr::select(at_msc.data, one_of(c("passage","CD34","CD54","age", "height", "weight", "BMI")))
+
+library(corrplot)
+
+cor_matrix<-cor(at_msc.numeric, use="complete.obs") 
+corrplot(cor_matrix, method="circle", type = "upper", cl.pos = "b", tl.pos = "d", tl.cex = 0.6)
+
+```
+
+The correlation plot for numerical variables shows some positive correlation between passage and CD34 expression. I had expected negative correlation. Quite strong negative  correlation is observed between age and CD34 expression.
+
+Also my other hypothesis, a positive correlation between age and CD54 expression does not show up in this data. Instead there is a small negative correlation. Strongest negative correlation with CD54 has the body mass index.
+
+# Linear regression
+
+Let's have a closer look at the negative correlation between CD34 expression and age by performing a linear regression analysis:
+```{r warning=FALSE}
+lm.CD34.age<- lm(CD34 ~ age, data = at_msc.data)
+summary(lm.CD34.age)
+```
+That's interesting! The relationship between age and CD34 is found to be statistically significant (alpha = 0.05).  Each year, the CD34 expression is estimated to drop by almost 1%. 57% of the variation is explained by this model. How would this look in a graph, for which we plot the CD34 expression against age:
+
+```{r warning = FALSE}
+# Access the gglot2 library
+library(ggplot2)
+
+# initialize plot with data and aesthetic mapping
+p1 <- ggplot(at_msc.data, aes(x = age, y = CD34, label=rownames(at_msc.data))) +  geom_text(size=3, hjust = 1.3)
+
+
+# define the visualization type (points)
+p2 <- p1 + geom_point()
+
+# add a regression line
+p3 <- p2 + geom_smooth(method = "lm")
+
+# add a main title and draw the plot
+p4 <- p3+ ggtitle("CD34 expression versus age")
+
+p4
+
+```
+
+There are not too many data points, but I think the linear relationship is quite clear. The donor coded as A1608 is a bit the odd one out. Let's check the diagnostic plots for this model:
+
+```{r warning=FALSE}
+par(mfrow = c(2,2))
+plot(lm.CD34.age, which = c(1,2,5))
+
+```
+
+- The Residuals vs Fitted plot is a bit tricky to evaluate with so few observations. At least from these data I cannot find a clear pattern that would indicate a problem with the assumption of constant error and independence of explanatory variables.
+
+ - Q-Q qplot: tThe better the normality assumption is quite nicely met by these ladies. As noticed before, A1608 is the odd one out. In our model, there is a reasonable fit with the line.
+ 
+ - Residuals vs Levarage: this plot helps to identify data points with unusually high impact. A1608 is just inside the inner Cook's distance line. but actually I am a bit more suspicious about A1602 and A1607, which are in the lower right corner. This means that these cases are influential to the regression results.
+
+The correlation plot showed a negative correlation between CD54 and body mass index (BMI). Let's have a closer look:
+```{r warning=FALSE}
+lm.CD54.BMI<- lm(CD54 ~ BMI, data = at_msc.data)
+summary(lm.CD54.BMI)
+```
+And indeed. The relationship between BMI and CD54 is found to be statistically significant (alpha = 0.05).  Each year, the CD34 expression is estimated to drop by almost 4.5% for every unit increase of BMI. Almost 66% of the variation is explained by this model.
+
+In a plot:
+
+```{r warning=FALSE}
+# Access the gglot2 library
+library(ggplot2)
+
+# initialize plot with data and aesthetic mapping
+p1 <- ggplot(at_msc.data, aes(x = BMI, y = CD54, label=rownames(at_msc.data))) +  geom_text(size=3, hjust = 1.3)
+
+
+# define the visualization type (points)
+p2 <- p1 + geom_point()
+
+# add a regression line
+p3 <- p2 + geom_smooth(method = "lm")
+
+# add a main title and draw the plot
+p4 <- p3+ ggtitle("CD54 expression versus BMI")
+
+p4
+
+```
+Maybe not as convincing as the previous model. A1606 might have big leverage. Let's check the diagnostic plots:
+
+```{r warning=FALSE}
+par(mfrow = c(2,2))
+plot(lm.CD54.BMI, which = c(1,2,5))
+
+```
+
+- Residuals vs Fitted plot: Again, it is quite difficult to evaluate this plot, because of the small data set. So far, no reason for big concern.
+
+- Q-Q qplot: the residuals of observations A1609 and A1605 are normally distributed. If they have big leverage on the data, that would indicate a problem.
+
+- Residuals vs Levarage: Actually, although A1609 is close to the Cook's distance lines, its leverage is not very high. A1606 shows up in the upper right corner, but its residual follows the normal distribution. 
+
+# Logical regression
+From the pairplots, we could already see that donors taking (hormonal) medication have lower expression of CD34 in their AT-MSCs. Let's see this from up close.
+
+```{r warning = FALSE}
+# initialize a plot of high_use and G1
+g1 <- ggplot(at_msc.data, aes(x = medication, y = CD34, group = medication)) + geom_boxplot(col="grey")
+
+# define the plot as a boxplot and draw it
+g1 + geom_point()+ geom_text(label = rownames(at_msc.data), hjust=-0.2, vjust=0.8) + ylab("CD34") + xlab("medication") 
+
+```
+Let's see if we can find a logical regression model for medication intake as a function of CD34 expression. 
+
+```{r}
+# find the model with glm()
+glm.medication.CD34 <- glm(medication ~ CD34, data = at_msc.data, family=binomial())
+
+# print out a summary of the model
+summary(glm.medication.CD34)
+```
+Well, that was maybe a bit too much to ask from this small data set. The relationship between CD34 expression and medication intake is not found to be significant. But I think it's still worth looking at the odds ratios:
+```{r warning=FALSE}
+
+# compute odds ratios (OR)
+OR <- coef(glm.medication.CD34) %>% exp
+
+# compute confidence intervals (CI)
+CI <- confint(glm.medication.CD34) %>% exp
+
+# print out the odds ratios with their confidence intervals
+cbind(OR, CI)
+
+```
+The odds ratio tells us that one percent increase of CD34 decreases the chance of the donor taking medicine by 1-0.85=15% (95%-CI -1.5% - 39%). But as the confidence interval of the odds ratio includes 1, we cannot say for certain if an increase in CD34 expression decreases or actually increases the probability of the donor taking medicine. Only a small fraction of the 95%-CI is more than 1, so with a CI of 90%, we might say that low CD34 expression is a predictor for medicine intake. One possibility is that  women are taking hormanal medication, because they have low hormone levels from themselves (e.g. estrogen). High steroid hormone levels, have been positively associated with CD34 expression (Baik et al. 2005)
+
+## Linear discriminant analysis
+
+The CD34 variable was taken out and converted into a categorical variable, using the quantiles as bins.
+```{r warning=FALSE}
+# center and standardize variables
+at_msc.scaled <- scale(at_msc.numeric)
+
+# change the object to data frame
+at_msc.scaled<- as.data.frame(at_msc.scaled)
+
+# save the scaled CD34 as scaled_CD34
+scaled_CD34 <- at_msc.scaled$CD34
+
+# create a quantile vector of CD34
+bins <- quantile(scaled_CD34, na.rm = TRUE)
+
+# create a categorical variable 'crime'
+CD34 <- cut(scaled_CD34, breaks = bins, include.lowest = TRUE, label = c("low", "med_low", "med_high", "high"))
+
+# look at the table of the new factor crime
+table(CD34)
+
+# remove original crim from the dataset
+at_msc.scaled <- dplyr::select(at_msc.scaled, -CD34)
+
+# add the new categorical value to scaled data
+at_msc.scaled <- data.frame(at_msc.scaled, CD34)
+```
+A linear discriminant analysis (LDA) was performed using the categorical  variable as a target variable and all other variables as predictor variables. A LDA biplot was drawn:
+
+```{r warning=FALSE}
+library(MASS)
+# linear discriminant analysis
+lda.fit <- lda(CD34 ~ . , data = at_msc.scaled)
+
+# the function for lda biplot arrows
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+# target classes as numeric
+classes <- as.numeric(at_msc.scaled$CD34)
+
+# plot the lda results
+plot(lda.fit, dimen = 2, xlim = c(-4, 4), ylim = c(-3,3))
+lda.arrows(lda.fit, myscale = 1)
+```
+The plot shows that age is an influencial linear separators for CD34 expression. This arrow points towards the donors with low to moderate expression of CD34. BMI and CD54 are influential spearators in the 2nd linear discriminant, but the arrows don't point to any samples, so I find it difficult to interpret this result.
+
+# K-means clustering
+I looked for the optimal number of clusters by caclulating the total within cluster sum of squares (TWCSS) for 1 to 8 clusters (the total number of observations is 9). The results were plotted:
+
+```{r warning=FALSE}
+# k-means clustering
+```{r}
+at_msc.numeric <- dplyr::select(at_msc.data, one_of(c("passage","CD34","CD54","age", "BMI")))
+
+at_msc.scaled<- scale(at_msc.numeric)
+
+dist_eu <- dist(at_msc.scaled)
+
+set.seed(123)
+
+# determine the number of clusters
+k_max <- 8
+
+# calculate the total within sum of squares
+twcss <- sapply(1:k_max, function(k){kmeans(dist_eu, k)$tot.withinss})
+
+# visualize the results
+plot(1:k_max, twcss, type='b')
+```
+The drop is total within cluster sum of squares is quite gradual. The biggest drop in twcss is at 2 clusters. Therefore I looked for 2 clusters. The results are plotted in a pairplot:
+
+```{r warning=FALSE}
+# k-means clustering
+km <-kmeans(dist_eu, centers = 2)
+
+# plot the Boston dataset with clusters
+
+pairs(at_msc.numeric, col = km$cluster, lower.panel = NULL, gap=0.5, pch = 16, cex =1)
+
+```
+The donors divide into a cluster (black) with low CD34 expression, low to moderate CD54 expression, older donors that are either overweight or obese. The second cluster (in red) has higher CD34 expression, moderate to high CD54 expression, younger donors that are in the normal weight range.
+
+# Conclusions
+The main result from this small scale study was a negative correlation between CD34 expression in AT-MSCs.  We did not find a decline in CD34 expression when the cells had been cultured for longer time (high passage), as previously observed by others.
+
+To my knowledge, a thorough analysis of the relation between donor specific information and the expression of cell surface markers such as CD34 and CD54 has not been performed, yet. Using a higher number of donors would potentially reveal more about age and health-related effects on surface marker expression by AT-MSCs. In addition, one could include data on the proliferation and differention capacity of the AT-MSCs.
+
+# References
+- Lin C-S, Ning H, Lin G, Lue TF. Is CD34 Truly a Negative Marker for Mesenchymal Stem Cells? Cytotherapy. 2012;14(10):10.3109/14653249.2012.729817. doi:10.3109/14653249.2012.729817.
+- Choudhery MS, Badowski M, Muise A, Pierce J, Harris DT. Donor age negatively impacts adipose tissue-derived mesenchymal stem cell expansion and differentiation. Journal of Translational Medicine. 2014;12:8. doi:10.1186/1479-5876-12-8.
+- Zhao L, Abdollah P, Do S, Nye C, Hantash BM (2013) Novel Negative Selection Marker CD54 Enhances Differentiation of Human Adipose-Derived Mesenchymal Stem Cells. J Clin Cell Immunol S9:005. doi:10.4172/2155-9899.S9-005
+- Baik I Devito WJ Ballen K et al Association of fetal hormone levels with stem cell potential: evidence for early life roots of human cancer. Cancer Res. 2005; 65(1):358-363.
